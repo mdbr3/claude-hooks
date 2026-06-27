@@ -6,7 +6,7 @@ Desktop notifications for [Claude Code](https://claude.com/claude-code) running 
 - ⏳ **is waiting** for your input,
 - ✅ **finished** working,
 
-…but **only when you are not already looking at that chat**. Clicking a notification **jumps you straight to the exact chat** that fired it.
+…but **only when you are not looking at VS Code**. Clicking a notification **jumps you straight to the exact chat** that fired it.
 
 ## Why this exists
 
@@ -16,12 +16,23 @@ The Claude Code VS Code extension has no native OS notifications — when the pa
 
 Claude Code fires lifecycle **hooks** (`PermissionRequest`, `Notification`, `Stop`). Each hook runs a small script that:
 
-1. Reads the hook's `session_id` and `cwd` from stdin.
-2. Looks at the **foreground window** — if it's this session's VS Code window (not minimized, title matches the workspace), it stays quiet.
+1. Reads the hook's `session_id` from stdin.
+2. Checks the **foreground app** — if VS Code is in front (and, on macOS, not minimized), it stays quiet.
 3. Otherwise it shows a desktop notification whose click opens
-   `vscode://anthropic.claude-code/open?session=<id>` — focusing the exact chat.
+   `vscode://anthropic.claude-code/open?session=<id>` — focusing the exact chat that fired it.
 
 Distinct sounds per event make the three cases easy to tell apart.
+
+### Behavior
+
+| Where you are | Notification? |
+|---|---|
+| Looking at any VS Code window | ❌ no |
+| VS Code minimized | ✅ yes |
+| Another app (browser, Slack…) | ✅ yes |
+| Click a notification | → jumps to the chat that fired it |
+
+> **Note on multiple chat windows:** notifications are suppressed whenever a VS Code window is focused — the script can't tell *which* chat window you're looking at (Claude Code exposes no per-chat window signal; see [issue #10366](https://github.com/anthropics/claude-code/issues/10366)). So while you work in one VS Code window you won't get a banner about *another* chat — you'll still see that chat's icon dot when you switch to it. The click-to-jump always targets the correct chat.
 
 ---
 
@@ -43,18 +54,14 @@ Distinct sounds per event make the three cases easy to tell apart.
 
 3. **Add the hooks** — merge the contents of [`macos/settings.hooks.json`](macos/settings.hooks.json) into `~/.claude/settings.json` under a top-level `"hooks"` key. If you don't have a `settings.json` yet, create one with just that block.
 
-4. **Grant permissions** (System Settings → Privacy & Security):
-   - **Notifications** → enable **terminal-notifier** (Allow Notifications, Banners or Alerts).
-   - **Accessibility** → enable **Visual Studio Code**. This is required to read window state (minimized / which window). **Restart VS Code** after enabling.
+4. **Allow notifications** — System Settings → Notifications → enable **terminal-notifier** (Allow Notifications, Banners or Alerts). The first notification registers it in this list.
 
-5. **Reload** — open the `/hooks` menu in Claude Code once, or restart it, so settings reload.
+5. **(Optional) Detect minimize** — to also get notified while VS Code is *minimized*, grant Accessibility: System Settings → Privacy & Security → Accessibility → enable **Visual Studio Code**, then **restart VS Code**. Without this, minimize is treated the same as "looking at VS Code" (no notification).
 
-6. **Customize** (optional) — edit the message text and sounds in `settings.hooks.json`.
+6. **Reload** — open the `/hooks` menu in Claude Code once, or restart it, so settings reload.
+
+7. **Customize** (optional) — edit the message text and sounds in `settings.hooks.json`.
    Available macOS sounds: `Basso`, `Blow`, `Bottle`, `Frog`, `Funk`, `Glass`, `Hero`, `Morse`, `Ping`, `Pop`, `Purr`, `Sosumi`, `Submarine`, `Tink`.
-
-**Notes / limitations**
-- "Looking at this session" is matched by the **workspace folder name** in the window title. Two windows with the same folder name can't be told apart.
-- Without Accessibility, the script can't detect minimize — it would mute while minimized. Granting Accessibility fixes this.
 
 ---
 
@@ -78,9 +85,7 @@ Distinct sounds per event make the three cases easy to tell apart.
 
 5. **Reload** — restart Claude Code.
 
-**Notes / limitations**
-- On Windows, minimizing VS Code already changes the foreground window, so the minimize case is handled automatically (no extra permission needed).
-- Windows toast sounds are a fixed set (e.g. `Default`, `IM`, `Mail`, `Reminder`, `SMS`, `Alarm`, `Call`). See the [BurntToast docs](https://github.com/Windos/BurntToast) for the full list.
+> On Windows the minimize case is handled automatically (minimizing VS Code changes the foreground window), so no extra permission is needed. Windows toast sounds are a fixed set (e.g. `Default`, `IM`, `Mail`, `Reminder`, `SMS`, `Alarm`, `Call`) — see the [BurntToast docs](https://github.com/Windos/BurntToast).
 
 ---
 

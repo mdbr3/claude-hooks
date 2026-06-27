@@ -1,7 +1,9 @@
 # Claude Code: show a Windows toast only when you are NOT actively looking at
-# this session's VS Code window.
+# VS Code. Suppress while VS Code is the foreground app; notify otherwise.
+# (On Windows, minimizing VS Code changes the foreground window, so minimize is
+# handled automatically.)
 # Called from a hook as:  & notify-when-away.ps1 "<message>" "<sound>"
-# Receives the hook JSON on stdin (provides session_id and cwd).
+# Receives the hook JSON on stdin (provides session_id).
 param(
   [string]$Message,
   [string]$Sound = "Default"
@@ -11,17 +13,13 @@ param(
 $raw = [Console]::In.ReadToEnd()
 try { $hook = $raw | ConvertFrom-Json } catch { $hook = $null }
 $sid = if ($hook -and $hook.session_id) { $hook.session_id } else { "" }
-$cwd = if ($hook -and $hook.cwd) { $hook.cwd } else { "" }
-$ws  = if ($cwd) { Split-Path $cwd -Leaf } else { "" }
 
-# Win32 helpers to read the foreground window (process + title).
+# Win32 helper to read the foreground window's owning process.
 Add-Type @"
 using System;
-using System.Text;
 using System.Runtime.InteropServices;
 public static class Fg {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
 }
 "@ -ErrorAction SilentlyContinue
@@ -29,22 +27,10 @@ public static class Fg {
 $h = [Fg]::GetForegroundWindow()
 $wpid = 0
 [Fg]::GetWindowThreadProcessId($h, [ref]$wpid) | Out-Null
-$sb = New-Object System.Text.StringBuilder 1024
-[Fg]::GetWindowText($h, $sb, $sb.Capacity) | Out-Null
-$title = $sb.ToString()
-$proc  = (Get-Process -Id $wpid -ErrorAction SilentlyContinue).ProcessName
+$proc = (Get-Process -Id $wpid -ErrorAction SilentlyContinue).ProcessName
 
-# On Windows, minimizing VS Code changes the foreground window, so "Code" being
-# foreground already means a visible window. Match the workspace to keep other
-# VS Code windows notifying.
-$looking = $false
-if ($proc -eq "Code") {
-  if ([string]::IsNullOrEmpty($ws) -or $title -like "*$ws*") {
-    $looking = $true
-  }
-}
-
-if (-not $looking) {
+# VS Code in front -> you're looking at it -> stay quiet. Otherwise notify.
+if ($proc -ne "Code") {
   $uri = "vscode://anthropic.claude-code/open?session=$sid"
   Import-Module BurntToast -ErrorAction SilentlyContinue
   if (Get-Module BurntToast) {
