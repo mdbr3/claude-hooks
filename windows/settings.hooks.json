@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"$env:USERPROFILE\\.claude\\notify-when-away.ps1\" \"Claude needs permission (edit / command)\" \"Reminder\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"$env:USERPROFILE\\.claude\\notify-when-away.ps1\" \"Claude is waiting for you\" \"IM\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"$env:USERPROFILE\\.claude\\notify-when-away.ps1\" \"Claude finished\" \"Mail\""
+          }
+        ]
+      }
+    ]
+  }
+}

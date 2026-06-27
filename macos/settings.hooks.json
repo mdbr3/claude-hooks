@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/notify-when-away.sh \"Claude needs permission (edit / command)\" \"Submarine\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/notify-when-away.sh \"Claude is waiting for you\" \"Tink\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/notify-when-away.sh \"Claude finished\" \"Glass\""
+          }
+        ]
+      }
+    ]
+  }
+}
